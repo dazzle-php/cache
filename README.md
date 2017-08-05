@@ -28,7 +28,30 @@ TODO
 
 ### Quickstart
 
-TODO
+This is simple example of setting and getting values from cache.
+
+```
+$loop  = new Loop();
+$cache = new Cache($loop);
+
+$cache->start()->then(function(CacheInterface $cache) {
+
+    $chain = new Promise();
+    $chain = $chain->then(function() use($cache) {
+        return $cache->set('SOME_KEY', "DAZZLE IS AWESOME\n");
+    });
+    $chain = $chain->then(function() use($cache) {
+        return $cache->get('SOME_KEY');
+    });
+    $chain = $chain->then(function($result) {
+        printf("%s", $result);
+        return $cache->end();
+    });
+    return $chain;
+});
+
+$loop->start();
+```
 
 ### Additional
 
