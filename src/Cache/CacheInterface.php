@@ -23,21 +23,21 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
     /**
      * Start cache.
      *
-     * @return PromiseInterface<CacheInterface>
+     * @return PromiseInterface
      */
     public function start();
 
     /**
      * Stop cache immediately.
      *
-     * @return PromiseInterface<CasheInterface>
+     * @return PromiseInterface
      */
     public function stop();
 
     /**
      * Stop accepting new requests immediately and stop cache after executing last pending request.
      *
-     * @return PromiseInterface<CasheInterface>
+     * @return PromiseInterface
      */
     public function end();
 
@@ -50,7 +50,7 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
      * @param string $key
      * @param string|int|object|array $val
      * @param float $ttl
-     * @return PromiseInterface<mixed>
+     * @return PromiseInterface
      */
     public function set($key, $val, $ttl = 0.0);
 
@@ -61,7 +61,7 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
      * to other factors than ist not-being set. If the value is unset, the promise will resolve with null value.
      *
      * @param string $key
-     * @return PromiseInterface<mixed|null>
+     * @return PromiseInterface
      */
     public function get($key);
 
@@ -69,7 +69,7 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
      * Remove value stored under specified key. Returns true if key existed or false if did not.
      *
      * @param string $key
-     * @return PromiseInterface<bool>
+     * @return PromiseInterface
      */
     public function remove($key);
 
@@ -77,7 +77,7 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
      * Check whether value exists.
      *
      * @param string $key
-     * @return PromiseInterface<bool>
+     * @return PromiseInterface
      */
     public function exists($key);
 
@@ -86,7 +86,7 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
      *
      * @param string $key
      * @param float $ttl
-     * @return PromiseInterface<float>
+     * @return PromiseInterface
      */
     public function setTtl($key, $ttl);
 
@@ -94,7 +94,7 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
      * Get TTL of already existing key. Returns 0 if there is no TTL.
      *
      * @param string $key
-     * @return PromiseInterface<float>
+     * @return PromiseInterface
      */
     public function getTtl($key);
 
@@ -102,7 +102,7 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
      * Remove TTL of already existing key. Returns true if value existed or false if did not.
      *
      * @param string $key
-     * @return PromiseInterface<bool>
+     * @return PromiseInterface
      */
     public function removeTtl($key);
 
@@ -110,28 +110,28 @@ interface CacheInterface extends EventEmitterInterface, LoopResourceInterface
      * Check if TTL exists for specified key.
      *
      * @param string $key
-     * @return PromiseInterface<bool>
+     * @return PromiseInterface
      */
     public function existsTtl($key);
 
     /**
      * Get existing keys.
      *
-     * @return PromiseInterface<string[]>
+     * @return PromiseInterface
      */
     public function getKeys();
 
     /**
      * Get cache stats.
      *
-     * @return PromiseInterface<array>
+     * @return PromiseInterface
      */
     public function getStats();
 
     /**
      * Flush cache object.
      *
-     * @return PromiseInterface<void>
+     * @return PromiseInterface
      */
     public function flush();
 }
