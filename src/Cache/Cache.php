@@ -35,16 +35,6 @@ class Cache extends BaseEventEmitter implements CacheInterface
     /**
      * @var bool
      */
-    protected $ending;
-
-    /**
-     * @var PromiseInterface[]
-     */
-    protected $endingPromises;
-
-    /**
-     * @var bool
-     */
     protected $paused;
 
     /**
@@ -63,6 +53,11 @@ class Cache extends BaseEventEmitter implements CacheInterface
     protected $timersCounter;
 
     /**
+     * @var mixed[]
+     */
+    protected $stats;
+
+    /**
      * @param LoopInterface $loop
      * @param mixed[] $config
      */
@@ -72,12 +67,11 @@ class Cache extends BaseEventEmitter implements CacheInterface
         $this->loopTimer = null;
         $this->config = $this->createConfig($config);
         $this->open = false;
-        $this->ending = false;
-        $this->endingPromises = [];
         $this->paused = true;
         $this->storage = [];
         $this->timers = [];
         $this->timersCounter = 0;
+        $this->stats = $this->createStats();
     }
 
     /**
@@ -95,7 +89,7 @@ class Cache extends BaseEventEmitter implements CacheInterface
      */
     public function isStarted()
     {
-        return $this->open || $this->ending;
+        return $this->open;
     }
 
     /**
@@ -104,13 +98,12 @@ class Cache extends BaseEventEmitter implements CacheInterface
      */
     public function start()
     {
-        if ($this->open || $this->ending)
+        if ($this->open)
         {
             return Promise::doResolve($this);
         }
 
         $this->open = true;
-        $this->ending = false;
         $this->handleStart();
 
         return Promise::doResolve($this);
@@ -122,13 +115,12 @@ class Cache extends BaseEventEmitter implements CacheInterface
      */
     public function stop()
     {
-        if (!$this->open && !$this->ending)
+        if (!$this->open)
         {
             return Promise::doResolve($this);
         }
 
         $this->open = false;
-        $this->ending = false;
         $this->handleStop();
 
         return Promise::doResolve($this);
@@ -140,22 +132,7 @@ class Cache extends BaseEventEmitter implements CacheInterface
      */
     public function end()
     {
-        if (!$this->open && !$this->ending)
-        {
-            return Promise::doResolve($this);
-        }
-
-        if ($this->timersCounter === 0)
-        {
-            return $this->stop();
-        }
-
-        $promise = new Promise();
-        $this->open = false;
-        $this->ending = true;
-        $this->endingPromises[] = $promise;
-
-        return $promise;
+        return $this->stop();
     }
 
     /**
@@ -206,6 +183,11 @@ class Cache extends BaseEventEmitter implements CacheInterface
         }
         $this->storage[$key] = $val;
 
+        if (is_object($val))
+        {
+            return Promise::doReject(new WriteException('Objects are not supported.'));
+        }
+
         if ($ttl > 0)
         {
             return $this->setTtl($key, $ttl)->then(function() use($val) { return $val; });
@@ -232,7 +214,7 @@ class Cache extends BaseEventEmitter implements CacheInterface
      */
     public function remove($key)
     {
-        if (!$this->open && !$this->ending)
+        if (!$this->open)
         {
             return Promise::doReject(new WriteException('Cache object is not open.'));
         }
@@ -309,7 +291,7 @@ class Cache extends BaseEventEmitter implements CacheInterface
      */
     public function removeTtl($key)
     {
-        if (!$this->open && !$this->ending)
+        if (!$this->open)
         {
             return Promise::doReject(new WriteException('Cache object is not open.'));
         }
@@ -321,10 +303,6 @@ class Cache extends BaseEventEmitter implements CacheInterface
         unset($this->timers[$key]);
         $this->timersCounter--;
 
-        if ($this->ending && $this->timersCounter === 0)
-        {
-            return $this->stop()->then(function() { return true; });
-        }
         return Promise::doResolve(true);
     }
 
@@ -351,7 +329,10 @@ class Cache extends BaseEventEmitter implements CacheInterface
         {
             return Promise::doReject(new ReadException('Cache object is not open.'));
         }
-        return Promise::doResolve(array_keys($this->storage));
+        return Promise::doResolve(array_keys($this->storage))->then(function($result) {
+            sort($result);
+            return $result;
+        });
     }
 
     /**
@@ -364,14 +345,8 @@ class Cache extends BaseEventEmitter implements CacheInterface
         {
             return Promise::doReject(new ReadException('Cache object is not open.'));
         }
-
-        // TODO
         return Promise::doResolve([
-            'keys'   => 0,
-            'hits'   => 0,
-            'misses' => 0,
-            'ksize'  => 0,
-            'vsize'  => 0,
+            'keys'   => count($this->storage),
         ]);
     }
 
@@ -404,6 +379,16 @@ class Cache extends BaseEventEmitter implements CacheInterface
     }
 
     /**
+     * Create stats.
+     *
+     * @return mixed[]
+     */
+    protected function createStats()
+    {
+        return [];
+    }
+
+    /**
      * Handle start.
      */
     protected function handleStart()
@@ -422,13 +407,6 @@ class Cache extends BaseEventEmitter implements CacheInterface
         $this->timersCounter = 0;
 
         $this->pause();
-
-        foreach ($this->endingPromises as $endingPromise)
-        {
-            $endingPromise->resolve($this);
-        }
-        $this->endingPromises = [];
-
         $this->emit('stop', [ $this ]);
     }
 

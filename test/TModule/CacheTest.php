@@ -9,10 +9,13 @@ use Dazzle\Cache\Test\TModule;
 use Dazzle\Loop\LoopInterface;
 use Dazzle\Promise\Promise;
 use Dazzle\Promise\PromiseInterface;
+use Dazzle\Throwable\Exception;
+use Dazzle\Throwable\Exception\Runtime\WriteException;
+use StdClass;
 
 class CacheTest extends TModule
 {
-    const TIMEOUT_TTL = 5e-1;
+    const TIMEOUT_TTL = 1;
 
     const TIMEOUT_EPS = 1e-1;
 
@@ -71,7 +74,7 @@ class CacheTest extends TModule
     /**
      *
      */
-    public function testCache_Ends_WhenLastTTLHasBeenFlushed()
+    public function testCache_Ends_WhenLastRequestHasBeenSent()
     {
         $sim = $this->simulate(function(SimulationInterface $sim) {
             $loop = $sim->getLoop();
@@ -83,6 +86,9 @@ class CacheTest extends TModule
                 /** @var PromiseInterface $promise */
                 $promise = Promise::doResolve();
                 $promise = $promise->then(function() use($cache) {
+                    return $cache->flush();
+                });
+                $promise = $promise->then(function() use($cache) {
                     return $cache->set('TEST', 'VAL', static::TIMEOUT_TTL);
                 });
                 $promise = $promise->then(function() use($cache) {
@@ -91,16 +97,7 @@ class CacheTest extends TModule
                 return $promise;
             });
             $cache->on('stop', function(CacheInterface $cache) use(&$time, $sim) {
-                $time = microtime(true) - $time;
-
-                if ($time >= static::TIMEOUT_TTL && $time <= static::TIMEOUT_TTL + static::TIMEOUT_EPS)
-                {
-                    $sim->done();
-                }
-                else
-                {
-                    $sim->fail('End triggered stop with wrong timeout.');
-                }
+                $sim->done();
             });
 
             $sim->onStart(function() use($cache) {
@@ -121,6 +118,9 @@ class CacheTest extends TModule
             $cache->once('start', function(CacheInterface $cache) use($sim) {
                 /** @var PromiseInterface $promise */
                 $promise = Promise::doResolve();
+                $promise = $promise->then(function() use($cache) {
+                    return $cache->flush();
+                });
                 $promise = $promise->then([ $cache, 'stop' ]);
                 $promise = $promise->then([ $cache, 'start' ]);
                 $promise = $promise->then(function() use($cache) {
@@ -168,6 +168,9 @@ class CacheTest extends TModule
             $cache->on('start', function(CacheInterface $cache) use($sim) {
                 return Promise::doResolve()
                     ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache) {
                         return $cache->get('TEST_KEY');
                     })
                     ->then(function($val) use($cache) {
@@ -196,6 +199,143 @@ class CacheTest extends TModule
     /**
      *
      */
+    public function testCache_IsAbleToSetPrimivite_OfStringValue()
+    {
+        $sim = $this->simulate(function(SimulationInterface $sim) {
+            $loop = $sim->getLoop();
+            $cache = $this->createCache($loop);
+
+            $cache->on('start', function(CacheInterface $cache) use($sim) {
+                return Promise::doResolve()
+                    ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache) {
+                        return $cache->set('TEST_KEY', "A\nB\nC\n");
+                    })
+                    ->then(function() use($cache) {
+                        return $cache->get('TEST_KEY')->then(function($result) {
+                            $this->assertSame("A\nB\nC\n", $result);
+                        });
+                    })
+                    ->done([ $sim, 'done' ], [ $sim, 'fail' ]);
+            });
+
+            $sim->onStart(function() use($cache) {
+                $cache->start();
+            });
+            $sim->onStop(function() use($cache) {
+                $cache->stop();
+            });
+        });
+    }
+
+    /**
+     *
+     */
+    public function testCache_IsAbleToSetPrimivite_OfNumericValue()
+    {
+        $sim = $this->simulate(function(SimulationInterface $sim) {
+            $loop = $sim->getLoop();
+            $cache = $this->createCache($loop);
+
+            $cache->on('start', function(CacheInterface $cache) use($sim) {
+                return Promise::doResolve()
+                    ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache) {
+                        return $cache->set('TEST_KEY', 2.5);
+                    })
+                    ->then(function() use($cache) {
+                        return $cache->get('TEST_KEY')->then(function($result) {
+                            $this->assertSame(2.5, $result);
+                        });
+                    })
+                    ->done([ $sim, 'done' ], [ $sim, 'fail' ]);
+            });
+
+            $sim->onStart(function() use($cache) {
+                $cache->start();
+            });
+            $sim->onStop(function() use($cache) {
+                $cache->stop();
+            });
+        });
+    }
+
+    /**
+     *
+     */
+    public function testCache_IsAbleToSetPrimivite_OfArrayValue()
+    {
+        $sim = $this->simulate(function(SimulationInterface $sim) {
+            $loop = $sim->getLoop();
+            $cache = $this->createCache($loop);
+
+            $cache->on('start', function(CacheInterface $cache) use($sim) {
+                return Promise::doResolve()
+                    ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache) {
+                        return $cache->set('TEST_KEY', [ 'A' => "test", 'B' => 2.5, 'C' => [ 'D' => "ABC" ] ]);
+                    })
+                    ->then(function() use($cache) {
+                        return $cache->get('TEST_KEY')->then(function($result) {
+                            $this->assertSame([ 'A' => "test", 'B' => 2.5, 'C' => [ 'D' => "ABC" ] ], $result);
+                        });
+                    })
+                    ->done([ $sim, 'done' ], [ $sim, 'fail' ]);
+            });
+
+            $sim->onStart(function() use($cache) {
+                $cache->start();
+            });
+            $sim->onStop(function() use($cache) {
+                $cache->stop();
+            });
+        });
+    }
+
+    /**
+     *
+     */
+    public function testCache_ThrowsWhenTriedToSetInvalidValue_OfObjectValue()
+    {
+        $sim = $this->simulate(function(SimulationInterface $sim) {
+            $loop = $sim->getLoop();
+            $cache = $this->createCache($loop);
+
+            $cache->on('start', function(CacheInterface $cache) use($sim) {
+                return Promise::doResolve()
+                    ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache, &$value) {
+                        return $cache->set('TEST_KEY', new StdClass);
+                    })
+                    ->then(function() {
+                        throw new Exception('Expected exception has not been thrown.');
+                    })
+                    ->then(null, function($ex) use($cache, &$value) {
+                        $this->assertInstanceOf(WriteException::class, $ex);
+                    })
+                    ->done([ $sim, 'done' ], [ $sim, 'fail' ]);
+            });
+
+            $sim->onStart(function() use($cache) {
+                $cache->start();
+            });
+            $sim->onStop(function() use($cache) {
+                $cache->stop();
+            });
+        });
+    }
+
+    /**
+     *
+     */
     public function testCache_IsAbleToRemoveAndCheckExistanceOfValues()
     {
         $sim = $this->simulate(function(SimulationInterface $sim) {
@@ -204,6 +344,9 @@ class CacheTest extends TModule
 
             $cache->on('start', function(CacheInterface $cache) use($sim) {
                 return Promise::doResolve()
+                    ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
                     ->then(function() use($cache) {
                         return $cache->exists('TEST_KEY')->then(function($result) {
                             $this->assertSame(false, $result);
@@ -248,6 +391,9 @@ class CacheTest extends TModule
 
             $cache->on('start', function(CacheInterface $cache) use($sim) {
                 return Promise::doResolve()
+                    ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
                     ->then(function() use($cache) {
                         return $cache->set('TEST_KEY', [ 'data' => 'A' ]);
                     })
@@ -301,6 +447,9 @@ class CacheTest extends TModule
             $cache->on('start', function(CacheInterface $cache) use($sim) {
                 return Promise::doResolve()
                     ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache) {
                         return $cache->set('TEST_KEY', [ 'data' => 'A' ], static::TIMEOUT_TTL);
                     })
                     ->then(function() use($cache) {
@@ -344,6 +493,9 @@ class CacheTest extends TModule
 
             $cache->on('start', function(CacheInterface $cache) use($sim) {
                 return Promise::doResolve()
+                    ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
                     ->then(function() use($cache) {
                         return $cache->set('TEST_KEY', 'SOME_VAL');
                     })
@@ -397,6 +549,9 @@ class CacheTest extends TModule
             $cache->on('start', function(CacheInterface $cache) use($sim) {
                 return Promise::doResolve()
                     ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache) {
                         return $cache->set('TEST_KEY', 'SOME_VAL');
                     })
                     ->then(function() use($cache) {
@@ -444,6 +599,9 @@ class CacheTest extends TModule
             $cache->on('start', function(CacheInterface $cache) use($sim) {
                 return Promise::doResolve()
                     ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache) {
                         return Promise::all([
                             $cache->set('TEST_KEY_A', 'SOME_VAL'),
                             $cache->set('TEST_KEY_B', 'SOME_VAL'),
@@ -468,8 +626,46 @@ class CacheTest extends TModule
     }
 
     /**
+     *
+     */
+    public function testCache_IsAbleToRetrieveInfo()
+    {
+        $sim = $this->simulate(function(SimulationInterface $sim) {
+            $loop = $sim->getLoop();
+            $cache = $this->createCache($loop);
+
+            $cache->on('start', function(CacheInterface $cache) use($sim) {
+                return Promise::doResolve()
+                    ->then(function() use($cache) {
+                        return $cache->flush();
+                    })
+                    ->then(function() use($cache) {
+                        return Promise::all([
+                            $cache->set('TEST_KEY_A', 'SOME_VAL'),
+                            $cache->set('TEST_KEY_B', 25),
+                            $cache->set('TEST_KEY_C', [ 'A' => 'TEST', 'B' => 'TEST' ]),
+                        ]);
+                    })
+                    ->then(function() use($cache) {
+                        return $cache->getStats()->then(function($result) {
+                            $this->assertSame(3, $result['keys']);
+                        });
+                    })
+                    ->done([ $sim, 'done' ], [ $sim, 'fail' ]);
+            });
+
+            $sim->onStart(function() use($cache) {
+                $cache->start();
+            });
+            $sim->onStop(function() use($cache) {
+                $cache->stop();
+            });
+        });
+    }
+
+    /**
      * @param LoopInterface $loop
-     * @return Cache|CacheInterface
+     * @return CacheInterface
      */
     public function createCache(LoopInterface $loop)
     {
