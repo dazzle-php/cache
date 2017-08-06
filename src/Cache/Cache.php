@@ -102,6 +102,16 @@ class Cache extends BaseEventEmitter implements CacheInterface
         {
             return Promise::doResolve($this);
         }
+        if ($this->loop->isRunning() === false)
+        {
+            $promise = new Promise();
+            $this->loop->onStart(function() use($promise) {
+                return $this->start()->then(function() use($promise) {
+                    return $promise->resolve($this);
+                });
+            });
+            return $promise;
+        }
 
         $this->open = true;
         $this->handleStart();
