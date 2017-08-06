@@ -1,8 +1,8 @@
 <?php
 
-namespace Dazzle\Cache\Test\TModule;
+namespace Dazzle\Cache\Test\TModule\Memory;
 
-use Dazzle\Cache\Cache;
+use Dazzle\Cache\Memory\MemoryCache;
 use Dazzle\Cache\CacheInterface;
 use Dazzle\Cache\Test\_Simulation\SimulationInterface;
 use Dazzle\Cache\Test\TModule;
@@ -669,6 +669,6 @@ class CacheTest extends TModule
      */
     public function createCache(LoopInterface $loop)
     {
-        return new Cache($loop);
+        return new MemoryCache($loop);
     }
 }

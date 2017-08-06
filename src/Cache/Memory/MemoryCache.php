@@ -1,7 +1,8 @@
 <?php
 
-namespace Dazzle\Cache;
+namespace Dazzle\Cache\Memory;
 
+use Dazzle\Cache\CacheInterface;
 use Dazzle\Event\BaseEventEmitter;
 use Dazzle\Loop\LoopAwareTrait;
 use Dazzle\Loop\LoopInterface;
@@ -13,7 +14,7 @@ use Dazzle\Throwable\Exception\Runtime\WriteException;
 use Error;
 use Exception;
 
-class Cache extends BaseEventEmitter implements CacheInterface
+class MemoryCache extends BaseEventEmitter implements CacheInterface
 {
     use LoopAwareTrait;
 

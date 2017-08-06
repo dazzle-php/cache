@@ -1,8 +1,8 @@
 <?php
 
-namespace Dazzle\Cache\Test\TUnit;
+namespace Dazzle\Cache\Test\TUnit\Memory;
 
-use Dazzle\Cache\Cache;
+use Dazzle\Cache\Memory\MemoryCache;
 use Dazzle\Cache\CacheInterface;
 use Dazzle\Cache\Test\TUnit;
 use Dazzle\Loop\Loop;
@@ -10,7 +10,7 @@ use Dazzle\Loop\LoopInterface;
 use Dazzle\Promise\Promise;
 use Dazzle\Promise\PromiseInterface;
 
-class CacheTest extends TUnit
+class MemoryCacheTest extends TUnit
 {
     /**
      *
@@ -141,11 +141,11 @@ class CacheTest extends TUnit
     /**
      * @param string[]|null $methods
      * @param LoopInterface $loop
-     * @return Cache|CacheInterface|\PHPUnit_Framework_MockObject_MockObject
+     * @return CacheInterface|\PHPUnit_Framework_MockObject_MockObject
      */
     public function createCache($methods = null, LoopInterface $loop = null)
     {
         $loop = $loop === null ? $this->createLoop() : $loop;
-        return $this->getMock(Cache::class, $methods, [ $loop ]);
+        return $this->getMock(MemoryCache::class, $methods, [ $loop ]);
     }
 }
